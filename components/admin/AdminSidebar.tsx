@@ -2,12 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MapPin, ClipboardList } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
-  { href: '/admin/areas', label: 'エリア', icon: MapPin },
-  { href: '/admin/tasks', label: 'タスク', icon: ClipboardList },
+  { href: '/admin/areas', label: 'エリア管理', icon: MapPin },
 ]
 
 export default function AdminSidebar() {
