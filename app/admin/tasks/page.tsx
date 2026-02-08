@@ -3,19 +3,17 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import type { CleaningArea, CleaningTask } from '@/lib/types/database'
 
-interface AreaWithDepartment extends CleaningArea {
-  department: { id: string; name: string; color: string }
-}
-
 interface TaskWithArea extends CleaningTask {
-  area: AreaWithDepartment
+  area: CleaningArea
 }
 
 export default function TasksPage() {
+  const { user, loading: userLoading } = useCurrentUser()
   const [tasks, setTasks] = useState<TaskWithArea[]>([])
-  const [areas, setAreas] = useState<AreaWithDepartment[]>([])
+  const [areas, setAreas] = useState<CleaningArea[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -29,20 +27,42 @@ export default function TasksPage() {
   const supabase = createClient()
 
   const fetchData = async () => {
-    const [tasksRes, areasRes] = await Promise.all([
-      supabase.from('cleaning_tasks').select('*, area:cleaning_areas(*, department:departments(*))').eq('is_active', true).order('sort_order'),
-      supabase.from('cleaning_areas').select('*, department:departments(*)').order('sort_order'),
-    ])
+    if (!user?.department_id) return
+
+    // 自分の部署のエリアを取得
+    const { data: areasData } = await supabase
+      .from('cleaning_areas')
+      .select('*')
+      .eq('department_id', user.department_id)
+      .order('sort_order')
+
+    setAreas(areasData || [])
+
+    if (!areasData || areasData.length === 0) {
+      setTasks([])
+      setLoading(false)
+      return
+    }
+
+    // 自分の部署のエリアに属するタスクを取得
+    const areaIds = areasData.map(a => a.id)
+    const { data: tasksData } = await supabase
+      .from('cleaning_tasks')
+      .select('*, area:cleaning_areas(*)')
+      .in('area_id', areaIds)
+      .eq('is_active', true)
+      .order('sort_order')
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTasks((tasksRes.data || []).map((t: any) => ({ ...t, area: t.area })))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setAreas((areasRes.data || []).map((a: any) => ({ ...a, department: a.department })))
+    setTasks((tasksData || []).map((t: any) => ({ ...t, area: t.area })))
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (user?.department_id) {
+      fetchData()
+    }
+  }, [user?.department_id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,7 +97,7 @@ export default function TasksPage() {
 
   const frequencyLabels = { daily: '毎日', weekly: '毎週', monthly: '毎月' }
 
-  if (loading) return <div>読み込み中...</div>
+  if (userLoading || loading) return <div>読み込み中...</div>
 
   return (
     <div>
@@ -132,7 +152,7 @@ export default function TasksPage() {
                 required
               >
                 {areas.map((area) => (
-                  <option key={area.id} value={area.id}>{area.department.name} - {area.name}</option>
+                  <option key={area.id} value={area.id}>{area.name}</option>
                 ))}
               </select>
             </div>
@@ -170,7 +190,6 @@ export default function TasksPage() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">タスク名</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">エリア</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">部署</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">頻度</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
             </tr>
@@ -180,14 +199,6 @@ export default function TasksPage() {
               <tr key={task.id}>
                 <td className="px-6 py-4 font-medium text-gray-900">{task.name}</td>
                 <td className="px-6 py-4 text-gray-500">{task.area.name}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className="px-2 py-1 text-xs rounded-full text-white"
-                    style={{ backgroundColor: task.area.department.color }}
-                  >
-                    {task.area.department.name}
-                  </span>
-                </td>
                 <td className="px-6 py-4 text-gray-500">{frequencyLabels[task.frequency]}</td>
                 <td className="px-6 py-4 text-right">
                   <button onClick={() => handleEdit(task)} className="text-blue-600 hover:text-blue-800 mr-3">
@@ -201,7 +212,7 @@ export default function TasksPage() {
             ))}
             {tasks.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                   タスクがまだありません
                 </td>
               </tr>

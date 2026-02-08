@@ -2,16 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, Users, MapPin, ClipboardList, Calendar, Home } from 'lucide-react'
+import { MapPin, ClipboardList } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
-  { href: '/admin', label: 'ダッシュボード', icon: Home },
-  { href: '/admin/departments', label: '部署', icon: Building2 },
-  { href: '/admin/users', label: 'ユーザー', icon: Users },
   { href: '/admin/areas', label: 'エリア', icon: MapPin },
   { href: '/admin/tasks', label: 'タスク', icon: ClipboardList },
-  { href: '/admin/schedules', label: 'スケジュール', icon: Calendar },
 ]
 
 export default function AdminSidebar() {

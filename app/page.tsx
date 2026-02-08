@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Calendar, User, Play } from 'lucide-react'
+import { Calendar, User, Play, Settings } from 'lucide-react'
 import { dummyCurrentUser, dummySchedules, taskColors, getNextTaskForUser, formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 
 function isToday(dateStr: string): boolean {
   const now = new Date()
@@ -14,6 +15,7 @@ function isToday(dateStr: string): boolean {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
+  const { isAdmin } = useCurrentUser()
 
   const nextTask = getNextTaskForUser(dummyCurrentUser.id)
 
@@ -51,6 +53,15 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{dummyCurrentUser.name}</span>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                管理
+              </Link>
+            )}
             <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors">
               ログアウト
             </button>
