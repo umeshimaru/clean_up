@@ -50,16 +50,29 @@ export default function AreasPage() {
     let areaId = editingId
 
     if (editingId) {
-      await supabase.from('cleaning_areas').update(formData).eq('id', editingId)
+      const { error } = await supabase.from('cleaning_areas').update(formData).eq('id', editingId)
+      if (error) {
+        console.error('エリア更新エラー:', error)
+        alert('エリアの更新に失敗しました: ' + error.message)
+        return
+      }
     } else {
       // sort_orderを連番で設定
       const nextSortOrder = areas.length + 1
-      const { data: newArea } = await supabase.from('cleaning_areas').insert({
+      const { data: newArea, error } = await supabase.from('cleaning_areas').insert({
         ...formData,
         department_id: user.department_id,
         sort_order: nextSortOrder,
       }).select().single()
+
+      if (error) {
+        console.error('エリア作成エラー:', error)
+        alert('エリアの作成に失敗しました: ' + error.message)
+        return
+      }
+
       areaId = newArea?.id
+      console.log('新規エリア作成成功:', newArea)
     }
 
     if (areaId) {
@@ -67,13 +80,15 @@ export default function AreasPage() {
       for (const item of todoItems) {
         if (item._deleted && item.id) {
           // 既存アイテムの削除（非アクティブ化）
-          await supabase.from('cleaning_tasks').update({ is_active: false }).eq('id', item.id)
+          const { error } = await supabase.from('cleaning_tasks').update({ is_active: false }).eq('id', item.id)
+          if (error) console.error('タスク削除エラー:', error)
         } else if (item.id && !item._deleted) {
           // 既存アイテムの更新
-          await supabase.from('cleaning_tasks').update({
+          const { error } = await supabase.from('cleaning_tasks').update({
             name: item.name,
             warning: item.warning || null,
           }).eq('id', item.id)
+          if (error) console.error('タスク更新エラー:', error)
         } else if (!item.id && !item._deleted) {
           // 新規アイテムの作成
           const existingTasks = await supabase
@@ -81,14 +96,20 @@ export default function AreasPage() {
             .select('id')
             .eq('area_id', areaId)
           const nextSortOrder = (existingTasks.data?.length || 0) + 1
-          await supabase.from('cleaning_tasks').insert({
+          const { error } = await supabase.from('cleaning_tasks').insert({
             area_id: areaId,
             name: item.name,
             warning: item.warning || null,
             sort_order: nextSortOrder,
           })
+          if (error) {
+            console.error('タスク作成エラー:', error)
+            alert('タスクの作成に失敗しました: ' + error.message)
+          }
         }
       }
+    } else {
+      console.error('areaIdが取得できませんでした')
     }
 
     setShowForm(false)
