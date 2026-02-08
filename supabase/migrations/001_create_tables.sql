@@ -7,17 +7,12 @@
 CREATE TABLE departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
-  description TEXT,
-  color VARCHAR(7) DEFAULT '#6366f1',
-  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_departments_sort_order ON departments(sort_order);
-
--- 2. members（メンバー）テーブル
-CREATE TABLE members (
+-- 2. users（ユーザー）テーブル
+CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   department_id UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
@@ -26,14 +21,13 @@ CREATE TABLE members (
   avatar_url TEXT,
   is_active BOOLEAN DEFAULT true,
   is_admin BOOLEAN DEFAULT false,
-  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_members_department_id ON members(department_id);
-CREATE INDEX idx_members_user_id ON members(user_id);
-CREATE INDEX idx_members_is_active ON members(is_active);
+CREATE INDEX idx_users_department_id ON users(department_id);
+CREATE INDEX idx_users_user_id ON users(user_id);
+CREATE INDEX idx_users_is_active ON users(is_active);
 
 -- 3. cleaning_areas（掃除エリア）テーブル
 CREATE TABLE cleaning_areas (
@@ -68,7 +62,7 @@ CREATE INDEX idx_cleaning_tasks_is_active ON cleaning_tasks(is_active);
 CREATE TABLE schedules (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES cleaning_tasks(id) ON DELETE CASCADE,
-  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  member_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   scheduled_date DATE NOT NULL,
   rotation_month VARCHAR(7) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -85,7 +79,7 @@ CREATE INDEX idx_schedules_rotation_month ON schedules(rotation_month);
 CREATE TABLE completions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   schedule_id UUID NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
-  completed_by UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  completed_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   completed_at TIMESTAMPTZ DEFAULT NOW(),
   notes TEXT,
   UNIQUE(schedule_id)
@@ -100,23 +94,23 @@ CREATE INDEX idx_completions_completed_by ON completions(completed_by);
 
 -- RLSを有効化
 ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cleaning_areas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cleaning_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE completions ENABLE ROW LEVEL SECURITY;
 
--- ヘルパー関数: 現在のメンバーIDを取得
-CREATE OR REPLACE FUNCTION get_current_member_id()
+-- ヘルパー関数: 現在のユーザーIDを取得
+CREATE OR REPLACE FUNCTION get_current_user_id()
 RETURNS UUID AS $$
-  SELECT id FROM members WHERE user_id = auth.uid() AND is_active = true LIMIT 1;
+  SELECT id FROM users WHERE user_id = auth.uid() AND is_active = true LIMIT 1;
 $$ LANGUAGE sql SECURITY DEFINER;
 
 -- ヘルパー関数: 管理者かどうかを確認
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
   SELECT EXISTS(
-    SELECT 1 FROM members
+    SELECT 1 FROM users
     WHERE user_id = auth.uid() AND is_admin = true AND is_active = true
   );
 $$ LANGUAGE sql SECURITY DEFINER;
@@ -127,11 +121,11 @@ CREATE POLICY "departments_insert" ON departments FOR INSERT TO authenticated WI
 CREATE POLICY "departments_update" ON departments FOR UPDATE TO authenticated USING (is_admin());
 CREATE POLICY "departments_delete" ON departments FOR DELETE TO authenticated USING (is_admin());
 
--- members: 認証済みユーザーは読み取り可、管理者のみ書き込み可
-CREATE POLICY "members_select" ON members FOR SELECT TO authenticated USING (true);
-CREATE POLICY "members_insert" ON members FOR INSERT TO authenticated WITH CHECK (is_admin());
-CREATE POLICY "members_update" ON members FOR UPDATE TO authenticated USING (is_admin());
-CREATE POLICY "members_delete" ON members FOR DELETE TO authenticated USING (is_admin());
+-- users: 認証済みユーザーは読み取り可、管理者のみ書き込み可
+CREATE POLICY "users_select" ON users FOR SELECT TO authenticated USING (true);
+CREATE POLICY "users_insert" ON users FOR INSERT TO authenticated WITH CHECK (is_admin());
+CREATE POLICY "users_update" ON users FOR UPDATE TO authenticated USING (is_admin());
+CREATE POLICY "users_delete" ON users FOR DELETE TO authenticated USING (is_admin());
 
 -- cleaning_areas: 認証済みユーザーは読み取り可、管理者のみ書き込み可
 CREATE POLICY "cleaning_areas_select" ON cleaning_areas FOR SELECT TO authenticated USING (true);
@@ -155,14 +149,14 @@ CREATE POLICY "schedules_delete" ON schedules FOR DELETE TO authenticated USING 
 CREATE POLICY "completions_select" ON completions FOR SELECT TO authenticated USING (true);
 CREATE POLICY "completions_insert" ON completions FOR INSERT TO authenticated
   WITH CHECK (
-    completed_by = get_current_member_id()
+    completed_by = get_current_user_id()
     AND EXISTS (
       SELECT 1 FROM schedules s
-      WHERE s.id = schedule_id AND s.member_id = get_current_member_id()
+      WHERE s.id = schedule_id AND s.member_id = get_current_user_id()
     )
   );
 CREATE POLICY "completions_delete" ON completions FOR DELETE TO authenticated
-  USING (completed_by = get_current_member_id() OR is_admin());
+  USING (completed_by = get_current_user_id() OR is_admin());
 
 -- ============================================
 -- スケジュール生成関数
@@ -198,9 +192,9 @@ BEGIN
     JOIN cleaning_areas ca ON ct.area_id = ca.id
     WHERE ct.is_active = true
   LOOP
-    SELECT ARRAY_AGG(id ORDER BY sort_order, created_at)
+    SELECT ARRAY_AGG(id ORDER BY created_at)
     INTO v_member_ids
-    FROM members
+    FROM users
     WHERE department_id = v_task.department_id AND is_active = true;
 
     v_member_count := COALESCE(array_length(v_member_ids, 1), 0);

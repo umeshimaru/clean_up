@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
-import type { Department, MemberWithDepartment } from '@/lib/types/database'
+import type { Department, UserWithDepartment } from '@/lib/types/database'
 
-export default function MembersPage() {
-  const [members, setMembers] = useState<MemberWithDepartment[]>([])
+export default function UsersPage() {
+  const [users, setUsers] = useState<UserWithDepartment[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -21,12 +21,12 @@ export default function MembersPage() {
   const supabase = createClient()
 
   const fetchData = async () => {
-    const [membersRes, deptsRes] = await Promise.all([
-      supabase.from('members').select('*, department:departments(*)').eq('is_active', true).order('sort_order'),
+    const [usersRes, deptsRes] = await Promise.all([
+      supabase.from('users').select('*, department:departments(*)').eq('is_active', true).order('sort_order'),
       supabase.from('departments').select('*').order('sort_order'),
     ])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setMembers((membersRes.data || []).map((m: any) => ({ ...m, department: m.department })))
+    setUsers((usersRes.data || []).map((u: any) => ({ ...u, department: u.department })))
     setDepartments(deptsRes.data || [])
     setLoading(false)
   }
@@ -38,9 +38,9 @@ export default function MembersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (editingId) {
-      await supabase.from('members').update(formData).eq('id', editingId)
+      await supabase.from('users').update(formData).eq('id', editingId)
     } else {
-      await supabase.from('members').insert(formData)
+      await supabase.from('users').insert(formData)
     }
     setShowForm(false)
     setEditingId(null)
@@ -48,20 +48,20 @@ export default function MembersPage() {
     fetchData()
   }
 
-  const handleEdit = (member: MemberWithDepartment) => {
+  const handleEdit = (user: UserWithDepartment) => {
     setFormData({
-      name: member.name,
-      email: member.email || '',
-      department_id: member.department_id,
-      is_admin: member.is_admin,
+      name: user.name,
+      email: user.email || '',
+      department_id: user.department_id,
+      is_admin: user.is_admin,
     })
-    setEditingId(member.id)
+    setEditingId(user.id)
     setShowForm(true)
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('このメンバーを非アクティブにしますか？')) {
-      await supabase.from('members').update({ is_active: false }).eq('id', id)
+    if (confirm('このユーザーを非アクティブにしますか？')) {
+      await supabase.from('users').update({ is_active: false }).eq('id', id)
       fetchData()
     }
   }
@@ -71,7 +71,7 @@ export default function MembersPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">メンバー管理</h1>
+        <h1 className="text-2xl font-bold text-gray-800">ユーザー管理</h1>
         <button
           onClick={() => { setShowForm(true); setEditingId(null); setFormData({ name: '', email: '', department_id: departments[0]?.id || '', is_admin: false }) }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -90,7 +90,7 @@ export default function MembersPage() {
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">{editingId ? 'メンバーを編集' : 'メンバーを作成'}</h2>
+          <h2 className="text-lg font-semibold mb-4">{editingId ? 'ユーザーを編集' : 'ユーザーを作成'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">名前</label>
@@ -162,35 +162,35 @@ export default function MembersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {members.map((member) => (
-              <tr key={member.id}>
-                <td className="px-6 py-4 font-medium text-gray-900">{member.name}</td>
-                <td className="px-6 py-4 text-gray-500">{member.email || '-'}</td>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
+                <td className="px-6 py-4 text-gray-500">{user.email || '-'}</td>
                 <td className="px-6 py-4">
                   <span
                     className="px-2 py-1 text-xs rounded-full text-white"
-                    style={{ backgroundColor: member.department.color }}
+                    style={{ backgroundColor: user.department.color }}
                   >
-                    {member.department.name}
+                    {user.department.name}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  {member.is_admin && <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">管理者</span>}
+                  {user.is_admin && <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">管理者</span>}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleEdit(member)} className="text-blue-600 hover:text-blue-800 mr-3">
+                  <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-800 mr-3">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(member.id)} className="text-red-600 hover:text-red-800">
+                  <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-800">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
             ))}
-            {members.length === 0 && (
+            {users.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                  メンバーがまだいません
+                  ユーザーがまだいません
                 </td>
               </tr>
             )}

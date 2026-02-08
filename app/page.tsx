@@ -1,9 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, User } from 'lucide-react'
+import Link from 'next/link'
+import { Calendar, User, Play } from 'lucide-react'
 import { dummyCurrentUser, dummySchedules, taskColors, getNextTaskForUser, formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
+
+function isToday(dateStr: string): boolean {
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  return dateStr === today
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
@@ -87,6 +94,15 @@ export default function Home() {
                   <p className="text-xl text-blue-600">
                     {nextTask.area}
                   </p>
+                  {isToday(nextTask.date) && (
+                    <Link
+                      href={`/cleaning/${nextTask.id}`}
+                      className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <Play className="w-5 h-5" />
+                      スタート
+                    </Link>
+                  )}
                 </div>
               </div>
             ) : (
@@ -100,7 +116,7 @@ export default function Home() {
         {activeTab === 'calendar' && (
           <CalendarView
             initialSchedules={dummySchedulesForCalendar}
-            currentMember={{
+            currentUser={{
               id: dummyCurrentUser.id,
               user_id: null,
               department_id: '1',

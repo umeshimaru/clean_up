@@ -3,19 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getNextMonth, getPrevMonth, getRotationMonth } from '@/lib/utils/calendar'
-import type { ScheduleWithDetails, Member } from '@/lib/types/database'
+import type { ScheduleWithDetails, User } from '@/lib/types/database'
 import CalendarHeader from './CalendarHeader'
 import CalendarGrid from './CalendarGrid'
 
 interface CalendarViewProps {
   initialSchedules: ScheduleWithDetails[]
-  currentMember: Member | null
+  currentUser: User | null
   taskColors?: Record<string, string>
 }
 
 export default function CalendarView({
   initialSchedules,
-  currentMember,
+  currentUser,
   taskColors,
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -45,7 +45,7 @@ export default function CalendarView({
             )
           )
         ),
-        member:members!inner (
+        member:users!inner (
           id,
           name,
           avatar_url
@@ -122,12 +122,12 @@ export default function CalendarView({
   }
 
   const handleComplete = async (scheduleId: string) => {
-    if (!currentMember) return
+    if (!currentUser) return
 
     const supabase = createClient()
     const { error } = await supabase.from('completions').insert({
       schedule_id: scheduleId,
-      completed_by: currentMember.id,
+      completed_by: currentUser.id,
     })
 
     if (!error) {
@@ -163,7 +163,7 @@ export default function CalendarView({
         <CalendarGrid
           currentDate={currentDate}
           schedules={schedules}
-          currentMemberId={currentMember?.id || null}
+          currentMemberId={currentUser?.id || null}
           onComplete={handleComplete}
         />
       )}

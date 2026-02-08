@@ -14,14 +14,14 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
-  const { data: member } = await supabase
-    .from('members')
+  const { data: appUser } = await supabase
+    .from('users')
     .select('is_admin')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
 
-  if (!member?.is_admin) {
+  if (!appUser?.is_admin) {
     redirect('/')
   }
 

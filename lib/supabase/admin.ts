@@ -1,0 +1,15 @@
+import { createClient } from '@supabase/supabase-js'
+
+// RLSをバイパスするための管理者用クライアント
+// サーバーサイドでのみ使用すること
+export function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}

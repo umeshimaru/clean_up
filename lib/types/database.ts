@@ -8,7 +8,7 @@ export interface Department {
   updated_at: string
 }
 
-export interface Member {
+export interface User {
   id: string
   user_id: string | null
   department_id: string
@@ -92,6 +92,6 @@ export interface ScheduleWithDetails {
   } | null
 }
 
-export interface MemberWithDepartment extends Member {
+export interface UserWithDepartment extends User {
   department: Department
 }
