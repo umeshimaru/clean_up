@@ -9,7 +9,7 @@ import type { CleaningArea, CleaningTask } from '@/lib/types/database'
 interface TodoItemFormData {
   id?: string
   name: string
-  description: string
+  warning?: string
   _deleted?: boolean
 }
 
@@ -72,7 +72,7 @@ export default function AreasPage() {
           // 既存アイテムの更新
           await supabase.from('cleaning_tasks').update({
             name: item.name,
-            description: item.description,
+            warning: item.warning || null,
           }).eq('id', item.id)
         } else if (!item.id && !item._deleted) {
           // 新規アイテムの作成
@@ -84,8 +84,7 @@ export default function AreasPage() {
           await supabase.from('cleaning_tasks').insert({
             area_id: areaId,
             name: item.name,
-            description: item.description,
-            frequency: 'daily',
+            warning: item.warning || null,
             sort_order: nextSortOrder,
           })
         }
@@ -114,7 +113,7 @@ export default function AreasPage() {
     setTodoItems((tasks || []).map((t: CleaningTask) => ({
       id: t.id,
       name: t.name,
-      description: t.description || '',
+      warning: t.warning || '',
     })))
     setShowForm(true)
   }
@@ -173,42 +172,55 @@ export default function AreasPage() {
                 {todoItems.map((item, index) => {
                   if (item._deleted) return null
                   return (
-                    <div key={index} className="flex gap-2 items-center">
+                    <div key={index} className="space-y-2 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => {
+                            const newItems = [...todoItems]
+                            newItems[index] = { ...newItems[index], name: e.target.value }
+                            setTodoItems(newItems)
+                          }}
+                          className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="やることの名前"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = [...todoItems]
+                            if (item.id) {
+                              // 既存アイテムは削除フラグを立てる
+                              newItems[index] = { ...newItems[index], _deleted: true }
+                            } else {
+                              // 新規アイテムは配列から削除
+                              newItems.splice(index, 1)
+                            }
+                            setTodoItems(newItems)
+                          }}
+                          className="p-2 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                       <input
                         type="text"
-                        value={item.name}
+                        value={item.warning || ''}
                         onChange={(e) => {
                           const newItems = [...todoItems]
-                          newItems[index] = { ...newItems[index], name: e.target.value }
+                          newItems[index] = { ...newItems[index], warning: e.target.value }
                           setTodoItems(newItems)
                         }}
-                        className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="やることの名前"
+                        className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
+                        placeholder="警告メッセージ（任意）"
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newItems = [...todoItems]
-                          if (item.id) {
-                            // 既存アイテムは削除フラグを立てる
-                            newItems[index] = { ...newItems[index], _deleted: true }
-                          } else {
-                            // 新規アイテムは配列から削除
-                            newItems.splice(index, 1)
-                          }
-                          setTodoItems(newItems)
-                        }}
-                        className="p-2 text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   )
                 })}
               </div>
               <button
                 type="button"
-                onClick={() => setTodoItems([...todoItems, { name: '', description: '' }])}
+                onClick={() => setTodoItems([...todoItems, { name: '', warning: '' }])}
                 className="mt-3 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
               >
                 <Plus className="w-4 h-4" />

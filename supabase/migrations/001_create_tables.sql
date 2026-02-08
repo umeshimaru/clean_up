@@ -47,8 +47,7 @@ CREATE TABLE cleaning_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   area_id UUID NOT NULL REFERENCES cleaning_areas(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
-  description TEXT,
-  frequency VARCHAR(20) DEFAULT 'daily',
+  warning TEXT,
   is_active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -186,7 +185,6 @@ BEGIN
   FOR v_task IN
     SELECT
       ct.id AS task_id,
-      ct.frequency,
       ca.department_id
     FROM cleaning_tasks ct
     JOIN cleaning_areas ca ON ct.area_id = ca.id
@@ -204,23 +202,18 @@ BEGIN
       v_current_date := v_start_date;
 
       WHILE v_current_date <= v_end_date LOOP
-        IF v_task.frequency = 'daily'
-           OR (v_task.frequency = 'weekly' AND EXTRACT(DOW FROM v_current_date) = 1)
-           OR (v_task.frequency = 'monthly' AND EXTRACT(DAY FROM v_current_date) = 1)
-        THEN
-          INSERT INTO schedules (task_id, member_id, scheduled_date, rotation_month)
-          VALUES (
-            v_task.task_id,
-            v_member_ids[(v_day_index % v_member_count) + 1],
-            v_current_date,
-            v_rotation_month
-          )
-          ON CONFLICT (task_id, scheduled_date) DO UPDATE
-          SET member_id = EXCLUDED.member_id, updated_at = NOW();
+        -- 全タスクを日次スケジュールとして生成
+        INSERT INTO schedules (task_id, member_id, scheduled_date, rotation_month)
+        VALUES (
+          v_task.task_id,
+          v_member_ids[(v_day_index % v_member_count) + 1],
+          v_current_date,
+          v_rotation_month
+        )
+        ON CONFLICT (task_id, scheduled_date) DO UPDATE
+        SET member_id = EXCLUDED.member_id, updated_at = NOW();
 
-          v_day_index := v_day_index + 1;
-        END IF;
-
+        v_day_index := v_day_index + 1;
         v_current_date := v_current_date + INTERVAL '1 day';
       END LOOP;
     END IF;
