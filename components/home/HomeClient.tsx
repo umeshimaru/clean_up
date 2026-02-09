@@ -2,11 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Calendar, User, Play, Settings } from 'lucide-react'
-import { dummySchedules, taskColors, getNextTaskForUser, formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
-import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import type { User as AppUser, ScheduleWithDetails } from '@/lib/types/database'
+
+interface NextTask {
+  id: string
+  date: string
+  dayOfWeek: string
+  area: string
+}
+
+interface HomeClientProps {
+  currentUser: AppUser
+  nextTask: NextTask | null
+  schedulesForCalendar: ScheduleWithDetails[]
+  taskColors: Record<string, string>
+}
 
 function isToday(dateStr: string): boolean {
   const now = new Date()
@@ -14,36 +26,18 @@ function isToday(dateStr: string): boolean {
   return dateStr === today
 }
 
-export default function Home() {
+function formatDateJapanese(dateStr: string): string {
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
+}
+
+export default function HomeClient({
+  currentUser,
+  nextTask,
+  schedulesForCalendar,
+  taskColors,
+}: HomeClientProps) {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
-  const { user, isAdmin } = useCurrentUser()
-
-  const nextTask = getNextTaskForUser(user?.id ?? '')
-
-  const dummySchedulesForCalendar = dummySchedules.map(s => ({
-    id: s.id,
-    scheduled_date: s.date,
-    task: {
-      id: s.id,
-      name: s.task,
-      color: s.color,
-      area: {
-        id: '1',
-        name: s.area,
-        department: {
-          id: '1',
-          name: '総務部',
-          color: s.color,
-        },
-      },
-    },
-    member: {
-      id: s.memberId,
-      name: s.memberName,
-      avatar_url: null,
-    },
-    completion: null,
-  }))
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -53,17 +47,21 @@ export default function Home() {
             アドネスお掃除管理アプリ
           </h1>
           <div className="flex items-center gap-4">
-            {user?.avatar_url && (
-              <Image
-                src={user.avatar_url}
-                alt={user.name}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            )}
-            <span className="text-sm text-gray-600">{user?.name}</span>
-            {isAdmin && (
+            <div className="flex items-center gap-2">
+              {currentUser.avatar_url ? (
+                <img
+                  src={currentUser.avatar_url}
+                  alt={currentUser.name}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User className="w-4 h-4 text-gray-500" />
+                </div>
+              )}
+              <span className="text-sm text-gray-600">{currentUser.name}</span>
+            </div>
+            {currentUser.is_admin && (
               <Link
                 href="/admin"
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
@@ -72,9 +70,14 @@ export default function Home() {
                 管理
               </Link>
             )}
-            <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors">
-              ログアウト
-            </button>
+            <form action="/auth/signout" method="POST">
+              <button
+                type="submit"
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                ログアウト
+              </button>
+            </form>
           </div>
         </header>
 
@@ -136,20 +139,8 @@ export default function Home() {
 
         {activeTab === 'calendar' && (
           <CalendarView
-            initialSchedules={dummySchedulesForCalendar}
-            currentUser={user ?? {
-              id: '',
-              user_id: null,
-              department_id: '',
-              name: '',
-              email: null,
-              avatar_url: null,
-              is_active: true,
-              is_admin: false,
-              sort_order: 0,
-              created_at: '',
-              updated_at: '',
-            }}
+            initialSchedules={schedulesForCalendar}
+            currentUser={currentUser}
             taskColors={taskColors}
           />
         )}
