@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, User, Play, Settings } from 'lucide-react'
-import { dummySchedules, taskColors, formatDateJapanese } from '@/lib/data/dummy'
+import { formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useNextSchedule } from '@/lib/hooks/useNextSchedule'
@@ -19,33 +19,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
   const { user, isAdmin } = useCurrentUser()
   const { nextSchedule: nextTask } = useNextSchedule(user?.id)
-
-console.log(nextTask)
-
-  const dummySchedulesForCalendar = dummySchedules.map(s => ({
-    id: s.id,
-    scheduled_date: s.date,
-    task: {
-      id: s.id,
-      name: s.task,
-      color: s.color,
-      area: {
-        id: '1',
-        name: s.area,
-        department: {
-          id: '1',
-          name: '総務部',
-          color: s.color,
-        },
-      },
-    },
-    member: {
-      id: s.memberId,
-      name: s.memberName,
-      avatar_url: null,
-    },
-    completion: null,
-  }))
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -109,7 +82,7 @@ console.log(nextTask)
           <div className="bg-white rounded-xl shadow-sm p-8">
             {nextTask ? (
               <div className="text-center">
-                <p className="text-gray-500 mb-4">次のあなたの担当:</p>
+                <p className="text-gray-500 mb-4">次の{user?.name}さんの担当:</p>
                 <div className="space-y-3">
                   <p className="text-2xl font-bold text-gray-800">
                     {formatDateJapanese(nextTask.date)}（{nextTask.dayOfWeek}）
@@ -138,21 +111,8 @@ console.log(nextTask)
 
         {activeTab === 'calendar' && (
           <CalendarView
-            initialSchedules={dummySchedulesForCalendar}
-            currentUser={user ?? {
-              id: '',
-              user_id: null,
-              department_id: '',
-              name: '',
-              email: null,
-              avatar_url: null,
-              is_active: true,
-              is_admin: false,
-              sort_order: 0,
-              created_at: '',
-              updated_at: '',
-            }}
-            taskColors={taskColors}
+            initialSchedules={[]}
+            currentUser={user ?? null}
           />
         )}
       </div>
