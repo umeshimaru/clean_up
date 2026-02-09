@@ -4,9 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, User, Play, Settings } from 'lucide-react'
-import { dummySchedules, taskColors, getNextTaskForUser, formatDateJapanese } from '@/lib/data/dummy'
+import { dummySchedules, taskColors, formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
+import { useNextSchedule } from '@/lib/hooks/useNextSchedule'
 
 function isToday(dateStr: string): boolean {
   const now = new Date()
@@ -17,8 +18,9 @@ function isToday(dateStr: string): boolean {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
   const { user, isAdmin } = useCurrentUser()
+  const { nextSchedule: nextTask } = useNextSchedule(user?.id)
 
-  const nextTask = getNextTaskForUser(user?.id ?? '')
+console.log(nextTask)
 
   const dummySchedulesForCalendar = dummySchedules.map(s => ({
     id: s.id,
