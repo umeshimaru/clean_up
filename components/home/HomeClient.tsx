@@ -17,7 +17,6 @@ interface HomeClientProps {
   currentUser: AppUser
   nextTask: NextTask | null
   schedulesForCalendar: ScheduleWithDetails[]
-  taskColors: Record<string, string>
 }
 
 function isToday(dateStr: string): boolean {
@@ -35,7 +34,6 @@ export default function HomeClient({
   currentUser,
   nextTask,
   schedulesForCalendar,
-  taskColors,
 }: HomeClientProps) {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
 
@@ -141,7 +139,6 @@ export default function HomeClient({
           <CalendarView
             initialSchedules={schedulesForCalendar}
             currentUser={currentUser}
-            taskColors={taskColors}
           />
         )}
       </div>
