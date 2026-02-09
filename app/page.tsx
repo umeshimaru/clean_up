@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, User, Play, Settings } from 'lucide-react'
+import { Calendar, User, Play, Settings, LogOut } from 'lucide-react'
 import { formatDateJapanese } from '@/lib/data/dummy'
 import CalendarView from '@/components/calendar/CalendarView'
 import { useCurrentUser } from '@/lib/hooks/useCurrentUser'
 import { useNextSchedule } from '@/lib/hooks/useNextSchedule'
+import { createClient } from '@/lib/supabase/client'
 
 function isToday(dateStr: string): boolean {
   const now = new Date()
@@ -19,6 +21,13 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'next' | 'calendar'>('next')
   const { user, isAdmin } = useCurrentUser()
   const { nextSchedule: nextTask } = useNextSchedule(user?.id)
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -47,7 +56,11 @@ export default function Home() {
                 管理
               </Link>
             )}
-            <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
               ログアウト
             </button>
           </div>
